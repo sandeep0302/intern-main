@@ -1,17 +1,20 @@
 import React, { useState, useEffect } from 'react';
 
-const TransactionsTable = ({ selectedMonth, onMonthChange }) => {
+const TransactionsTable = () => {
   const [transactions, setTransactions] = useState([]);
-  const [searchText, setSearchText] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [searchText, setSearchText] = useState('');
+  const [selectedMonth, setSelectedMonth] = useState('March');
+  const [loading, setLoading] = useState(false); // Added loading state
 
   useEffect(() => {
     fetchTransactions();
-  }, [selectedMonth, searchText, currentPage]);
+  }, [currentPage, selectedMonth, searchText]);
 
   const fetchTransactions = async () => {
     try {
+      setLoading(true);
       const response = await fetch(
         `http://localhost:5000/api/transactions?month=${selectedMonth}&search=${searchText}&page=${currentPage}&perPage=10`
       );
@@ -19,86 +22,123 @@ const TransactionsTable = ({ selectedMonth, onMonthChange }) => {
       setTransactions(data.transactions);
       setTotalPages(data.totalPages);
     } catch (error) {
-      console.error('Error fetching transactions:', error);
+      console.error('Error:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
-  return (
-    <div className="p-4 bg-white rounded-lg shadow">
-      <div className="flex justify-between mb-4">
-        <input
-          type="text"
-          placeholder="Search transaction"
-          value={searchText}
-          onChange={(e) => setSearchText(e.target.value)}
-          className="border p-2 rounded"
-        />
+  const renderImage = (imageUrl) => {
+    if (!imageUrl) return 'No Image';
+    
+    return (
+      <img 
+        src={imageUrl} 
+        alt="Product"
+        className="w-12 h-12 object-cover rounded"
+        onError={(e) => {
+          e.target.onerror = null;
+          e.target.src = '/api/placeholder/48/48';
+        }}
+      />
+    );
+  };
 
-        <select
-          value={selectedMonth}
-          onChange={(e) => onMonthChange(e.target.value)}
-          className="border p-2 rounded"
-        >
-          {[
-            'January', 'February', 'March', 'April', 'May', 'June',
-            'July', 'August', 'September', 'October', 'November', 'December'
-          ].map(month => (
-            <option key={month} value={month}>{month}</option>
-          ))}
-        </select>
+  return (
+    <div className="bg-blue-50 p-8 rounded-lg">
+      <div className="flex justify-between mb-6">
+        <div className="bg-yellow-200 rounded-full px-4 py-2">
+          <input
+            type="text"
+            placeholder="Search transaction"
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+            className="bg-transparent outline-none w-full placeholder-gray-600"
+          />
+        </div>
+
+        <div className="relative">
+          <select
+            value={selectedMonth}
+            onChange={(e) => setSelectedMonth(e.target.value)}
+            className="bg-yellow-400 rounded-full px-4 py-2 appearance-none pr-8 outline-none cursor-pointer"
+          >
+            {[
+              'January', 'February', 'March', 'April', 'May', 'June',
+              'July', 'August', 'September', 'October', 'November', 'December'
+            ].map(month => (
+              <option key={month} value={month}>{month}</option>
+            ))}
+          </select>
+          <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </div>
+        </div>
       </div>
 
-      <div className="overflow-x-auto">
-        <table className="w-full border-collapse">
+      <div className="bg-yellow-100 rounded-lg overflow-hidden">
+        <table className="w-full">
           <thead>
-            <tr className="bg-gray-100">
-              <th className="border p-2 text-left">ID</th>
-              <th className="border p-2 text-left">Title</th>
-              <th className="border p-2 text-left">Description</th>
-              <th className="border p-2 text-left">Price</th>
-              <th className="border p-2 text-left">Category</th>
-              <th className="border p-2 text-left">Sold</th>
-              <th className="border p-2 text-left">Date of Sale</th>
+            <tr className="bg-yellow-200">
+              <th className="p-3 text-left border-b border-r border-yellow-300">ID</th>
+              <th className="p-3 text-left border-b border-r border-yellow-300">Title</th>
+              <th className="p-3 text-left border-b border-r border-yellow-300">Description</th>
+              <th className="p-3 text-left border-b border-r border-yellow-300">Price</th>
+              <th className="p-3 text-left border-b border-r border-yellow-300">Category</th>
+              <th className="p-3 text-left border-b border-r border-yellow-300">Sold</th>
+              <th className="p-3 text-left border-b border-yellow-300">Image</th>
             </tr>
           </thead>
           <tbody>
-            {transactions.map((transaction) => (
-              <tr key={transaction.id} className="hover:bg-gray-50">
-                <td className="border p-2">{transaction.id}</td>
-                <td className="border p-2">{transaction.title}</td>
-                <td className="border p-2">{transaction.description}</td>
-                <td className="border p-2">${transaction.price}</td>
-                <td className="border p-2">{transaction.category}</td>
-                <td className="border p-2">{transaction.sold ? 'Yes' : 'No'}</td>
-                <td className="border p-2">
-                  {new Date(transaction.dateOfSale).toLocaleDateString()}
-                </td>
+            {loading ? (
+              <tr>
+                <td colSpan="7" className="text-center p-4">Loading...</td>
               </tr>
-            ))}
+            ) : transactions.length === 0 ? (
+              <tr>
+                <td colSpan="7" className="text-center p-4">No transactions found</td>
+              </tr>
+            ) : (
+              transactions.map((transaction) => (
+                <tr key={transaction.id} className="border-b border-yellow-200">
+                  <td className="p-3 border-r border-yellow-200">{transaction.id}</td>
+                  <td className="p-3 border-r border-yellow-200">{transaction.title}</td>
+                  <td className="p-3 border-r border-yellow-200">{transaction.description}</td>
+                  <td className="p-3 border-r border-yellow-200">${transaction.price}</td>
+                  <td className="p-3 border-r border-yellow-200">{transaction.category}</td>
+                  <td className="p-3 border-r border-yellow-200">{transaction.sold ? 'Yes' : 'No'}</td>
+                  <td className="p-3 flex justify-center">
+                    {renderImage(transaction.image)}
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>
 
-      <div className="mt-4 flex justify-between items-center">
-        <div>
-          Page {currentPage} of {totalPages}
-        </div>
-        <div>
+      <div className="flex justify-between items-center mt-4 text-sm">
+        <div>Page No: {currentPage}</div>
+        <div className="space-x-2">
           <button
             onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
             disabled={currentPage === 1}
-            className="px-4 py-2 mr-2 bg-blue-500 text-white rounded disabled:bg-gray-300"
+            className="text-blue-600 hover:text-blue-800"
           >
             Previous
           </button>
+          <span>-</span>
           <button
-            onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+            onClick={() => setCurrentPage(prev => prev + 1)}
             disabled={currentPage === totalPages}
-            className="px-4 py-2 bg-blue-500 text-white rounded disabled:bg-gray-300"
+            className="text-blue-600 hover:text-blue-800"
           >
             Next
           </button>
         </div>
+        <div>Per Page: 10</div>
       </div>
     </div>
   );
