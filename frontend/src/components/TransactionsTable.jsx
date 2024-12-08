@@ -1,22 +1,33 @@
 import React, { useState, useEffect } from 'react';
 
 const TransactionsTable = () => {
+  const [searchText, setSearchText] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [loading, setLoading] = useState(false);
   const [transactions, setTransactions] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [searchText, setSearchText] = useState('');
   const [selectedMonth, setSelectedMonth] = useState('March');
-  const [loading, setLoading] = useState(false); // Added loading state
 
+  // Debounce search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchText);
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchText]);
+
+  // Fetch data when search, month, or page changes
   useEffect(() => {
     fetchTransactions();
-  }, [currentPage, selectedMonth, searchText]);
+  }, [debouncedSearch, selectedMonth, currentPage]);
 
   const fetchTransactions = async () => {
     try {
       setLoading(true);
       const response = await fetch(
-        `http://localhost:5000/api/transactions?month=${selectedMonth}&search=${searchText}&page=${currentPage}&perPage=10`
+        `http://localhost:5000/api/transactions?month=${selectedMonth}&search=${debouncedSearch}&page=${currentPage}&perPage=10`
       );
       const data = await response.json();
       setTransactions(data.transactions);
@@ -26,6 +37,16 @@ const TransactionsTable = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSearch = (e) => {
+    setSearchText(e.target.value);
+    setCurrentPage(1); // Reset to first page on search
+  };
+
+  const handleClearSearch = () => {
+    setSearchText('');
+    setCurrentPage(1);
   };
 
   const renderImage = (imageUrl) => {
@@ -47,14 +68,23 @@ const TransactionsTable = () => {
   return (
     <div className="bg-blue-50 p-8 rounded-lg">
       <div className="flex justify-between mb-6">
-        <div className="bg-yellow-200 rounded-full px-4 py-2">
+        {/* Search Box with Clear Button */}
+        <div className="relative bg-yellow-200 rounded-full px-4 py-2">
           <input
             type="text"
-            placeholder="Search transaction"
+            placeholder="Search by title, description or price..."
             value={searchText}
-            onChange={(e) => setSearchText(e.target.value)}
+            onChange={handleSearch}
             className="bg-transparent outline-none w-full placeholder-gray-600"
           />
+          {searchText && (
+            <button
+              onClick={handleClearSearch}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+            >
+              ×
+            </button>
+          )}
         </div>
 
         <div className="relative">
