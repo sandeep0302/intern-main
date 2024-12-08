@@ -1,33 +1,21 @@
 import React, { useState, useEffect } from 'react';
 
-const TransactionsTable = () => {
-  const [searchText, setSearchText] = useState('');
-  const [debouncedSearch, setDebouncedSearch] = useState('');
-  const [loading, setLoading] = useState(false);
+const TransactionsTable = ({ selectedMonth }) => {
   const [transactions, setTransactions] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [selectedMonth, setSelectedMonth] = useState('March');
+  const [searchText, setSearchText] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  // Debounce search
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedSearch(searchText);
-    }, 300);
-
-    return () => clearTimeout(timer);
-  }, [searchText]);
-
-  // Fetch data when search, month, or page changes
   useEffect(() => {
     fetchTransactions();
-  }, [debouncedSearch, selectedMonth, currentPage]);
+  }, [selectedMonth, currentPage, searchText]);
 
   const fetchTransactions = async () => {
     try {
       setLoading(true);
       const response = await fetch(
-        `http://localhost:5000/api/transactions?month=${selectedMonth}&search=${debouncedSearch}&page=${currentPage}&perPage=10`
+        `http://localhost:5000/api/transactions?month=${selectedMonth}&search=${searchText}&page=${currentPage}&perPage=10`
       );
       const data = await response.json();
       setTransactions(data.transactions);
@@ -67,8 +55,16 @@ const TransactionsTable = () => {
 
   return (
     <div className="bg-blue-50 p-8 rounded-lg">
-      <div className="flex justify-between mb-6">
-        {/* Search Box with Clear Button */}
+      {/* Title with Selected Month */}
+      <h2 className="text-xl font-bold mb-6">
+        Transaction Details - {selectedMonth}{' '}
+        <span className="text-sm font-normal text-gray-500">
+          (Selected Month)
+        </span>
+      </h2>
+
+      {/* Search Box */}
+      <div className="mb-6">
         <div className="relative bg-yellow-200 rounded-full px-4 py-2">
           <input
             type="text"
@@ -86,28 +82,9 @@ const TransactionsTable = () => {
             </button>
           )}
         </div>
-
-        <div className="relative">
-          <select
-            value={selectedMonth}
-            onChange={(e) => setSelectedMonth(e.target.value)}
-            className="bg-yellow-400 rounded-full px-4 py-2 appearance-none pr-8 outline-none cursor-pointer"
-          >
-            {[
-              'January', 'February', 'March', 'April', 'May', 'June',
-              'July', 'August', 'September', 'October', 'November', 'December'
-            ].map(month => (
-              <option key={month} value={month}>{month}</option>
-            ))}
-          </select>
-          <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-            </svg>
-          </div>
-        </div>
       </div>
 
+      {/* Table */}
       <div className="bg-yellow-100 rounded-lg overflow-hidden">
         <table className="w-full">
           <thead>
@@ -138,7 +115,15 @@ const TransactionsTable = () => {
                   <td className="p-3 border-r border-yellow-200">{transaction.description}</td>
                   <td className="p-3 border-r border-yellow-200">${transaction.price}</td>
                   <td className="p-3 border-r border-yellow-200">{transaction.category}</td>
-                  <td className="p-3 border-r border-yellow-200">{transaction.sold ? 'Yes' : 'No'}</td>
+                  <td className="p-3 border-r border-yellow-200">
+                    <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                      transaction.sold 
+                        ? 'bg-green-100 text-green-800' 
+                        : 'bg-red-100 text-red-800'
+                    }`}>
+                      {transaction.sold ? 'Yes' : 'No'}
+                    </span>
+                  </td>
                   <td className="p-3 flex justify-center">
                     {renderImage(transaction.image)}
                   </td>
@@ -149,21 +134,26 @@ const TransactionsTable = () => {
         </table>
       </div>
 
+      {/* Pagination */}
       <div className="flex justify-between items-center mt-4 text-sm">
         <div>Page No: {currentPage}</div>
         <div className="space-x-2">
           <button
             onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-            disabled={currentPage === 1}
-            className="text-blue-600 hover:text-blue-800"
+            disabled={currentPage === 1 || loading}
+            className={`text-blue-600 hover:text-blue-800 ${
+              currentPage === 1 || loading ? 'opacity-50 cursor-not-allowed' : ''
+            }`}
           >
             Previous
           </button>
           <span>-</span>
           <button
-            onClick={() => setCurrentPage(prev => prev + 1)}
-            disabled={currentPage === totalPages}
-            className="text-blue-600 hover:text-blue-800"
+            onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+            disabled={currentPage >= totalPages || loading}
+            className={`text-blue-600 hover:text-blue-800 ${
+              currentPage >= totalPages || loading ? 'opacity-50 cursor-not-allowed' : ''
+            }`}
           >
             Next
           </button>
